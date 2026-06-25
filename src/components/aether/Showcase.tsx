@@ -1,5 +1,10 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { motion, useScroll, useTransform } from "motion/react";
+
+// Royalty-free imagery from Unsplash. `unsplash.com/photos/<id>` resolves via
+// the images.unsplash.com CDN with on-the-fly resize + format negotiation.
+const img = (id: string, w = 900) =>
+  `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&q=80`;
 
 const products = [
   {
@@ -9,6 +14,7 @@ const products = [
     tag: "Spatial",
     glyph: "◐",
     color: "#8ab4ff",
+    image: img("1622979135225-d2ba269cf1ac"), // headset / tech
   },
   {
     name: "Air Max Scorpion",
@@ -17,6 +23,7 @@ const products = [
     tag: "Footwear",
     glyph: "◇",
     color: "#ff7a59",
+    image: img("1542291026-7eec264c27ff"), // red nike sneaker
   },
   {
     name: "Sonos Era 300",
@@ -25,6 +32,7 @@ const products = [
     tag: "Audio",
     glyph: "◉",
     color: "#c0c5ce",
+    image: img("1608043152269-423dbba4e7e1"), // speaker
   },
   {
     name: "MX Master 4S",
@@ -33,6 +41,7 @@ const products = [
     tag: "Precision",
     glyph: "◑",
     color: "#6d6cff",
+    image: img("1527864550417-7fd91fc51a46"), // mouse
   },
   {
     name: "Galaxy Z Fold 7",
@@ -41,6 +50,7 @@ const products = [
     tag: "Flagship",
     glyph: "▤",
     color: "#90e0c0",
+    image: img("1511707171634-5f897ff02aa9"), // phone
   },
   {
     name: "Charge 6 Speaker",
@@ -49,6 +59,7 @@ const products = [
     tag: "Portable",
     glyph: "◍",
     color: "#ffb347",
+    image: img("1545454675-3531b543be5d"), // portable speaker
   },
 ];
 
