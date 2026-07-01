@@ -139,15 +139,48 @@ export function Nav() {
             />
             <SearchIcon />
           </IconBtn>
-          <IconBtn label="Wishlist" badge={3}>
+          <IconBtn label="Wishlist" badge={counts.wishlist}>
             <HeartIcon />
           </IconBtn>
-          <IconBtn label="Cart" badge={2}>
+          <IconBtn label="Cart" badge={counts.cart}>
             <BagIcon />
           </IconBtn>
-          <IconBtn label="Account">
-            <UserIcon />
-          </IconBtn>
+          {user ? (
+            <div className="relative">
+              <button
+                onClick={() => setAcctOpen((v) => !v)}
+                aria-label="Account"
+                className="relative inline-flex h-10 w-10 items-center justify-center rounded-full glass hover:bg-[oklch(1_0_0/0.08)] transition-colors text-[0.7rem] uppercase tracking-widest text-platinum"
+              >
+                {(user.email?.[0] ?? "A").toUpperCase()}
+              </button>
+              {acctOpen && (
+                <div className="absolute right-0 top-full mt-2 min-w-[220px] glass-strong rounded-2xl p-3 grid gap-1 z-50">
+                  <div className="px-3 py-2 text-[0.65rem] uppercase tracking-[0.22em] text-platinum/50 truncate">
+                    {user.email}
+                  </div>
+                  <button
+                    onClick={async () => {
+                      await signOut();
+                      setAcctOpen(false);
+                    }}
+                    className="text-left rounded-xl px-3 py-2 text-[0.7rem] uppercase tracking-[0.2em] text-platinum/80 hover:bg-[oklch(1_0_0/0.06)] hover:text-platinum"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link
+              to="/auth"
+              aria-label="Sign in"
+              className="relative inline-flex h-10 w-10 items-center justify-center rounded-full glass hover:bg-[oklch(1_0_0/0.08)] transition-colors"
+            >
+              <UserIcon />
+            </Link>
+          )}
+
           <button
             onClick={() => setOpen((v) => !v)}
             aria-label="Menu"
