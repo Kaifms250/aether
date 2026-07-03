@@ -163,6 +163,20 @@ export function Nav() {
                   <div className="px-3 py-2 text-[0.65rem] uppercase tracking-[0.22em] text-platinum/50 truncate">
                     {user.email}
                   </div>
+                  <Link
+                    to="/orders"
+                    onClick={() => setAcctOpen(false)}
+                    className="rounded-xl px-3 py-2 text-[0.7rem] uppercase tracking-[0.2em] text-platinum/80 hover:bg-[oklch(1_0_0/0.06)] hover:text-platinum"
+                  >
+                    Orders
+                  </Link>
+                  <Link
+                    to="/wishlist"
+                    onClick={() => setAcctOpen(false)}
+                    className="rounded-xl px-3 py-2 text-[0.7rem] uppercase tracking-[0.2em] text-platinum/80 hover:bg-[oklch(1_0_0/0.06)] hover:text-platinum"
+                  >
+                    Wishlist
+                  </Link>
                   <button
                     onClick={async () => {
                       await signOut();
