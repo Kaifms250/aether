@@ -8,6 +8,9 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/Auth";
 import ProductPage from "./pages/Product";
+import CartPage from "./pages/Cart";
+import WishlistPage from "./pages/Wishlist";
+import OrdersPage from "./pages/Orders";
 import { AuthProvider } from "./hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
 
