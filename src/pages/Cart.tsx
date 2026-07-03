@@ -80,7 +80,6 @@ export default function CartPage() {
         user_id: user.id,
         order_number: orderNumber,
         status: "pending",
-        payment_status: "pending",
         subtotal,
         shipping,
         tax,
@@ -97,13 +96,17 @@ export default function CartPage() {
     const items = rows
       .filter((r) => r.product)
       .map((r) => ({
-        order_id: order.id,
+        order_id: order.id as string,
         product_id: r.product!.id,
-        product_name: r.product!.name,
-        product_brand: r.product!.brand,
-        unit_price: r.product!.price,
+        unit_price: Number(r.product!.price),
         quantity: r.quantity,
-        subtotal: Number(r.product!.price) * r.quantity,
+        line_total: Number(r.product!.price) * r.quantity,
+        product_snapshot: {
+          name: r.product!.name,
+          brand: r.product!.brand,
+          image_url: r.product!.image_url,
+          slug: r.product!.slug,
+        },
       }));
     const { error: iErr } = await supabase.from("order_items").insert(items);
     if (iErr) {
