@@ -26,6 +26,9 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/product/:slug" element={<ProductPage />} />
+            <Route path="/cart" element={<CartPage />} />
+            <Route path="/wishlist" element={<WishlistPage />} />
+            <Route path="/orders" element={<OrdersPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
