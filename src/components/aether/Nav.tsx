@@ -36,22 +36,31 @@ function IconBtn({
   label,
   children,
   badge,
+  to,
+  onClick,
 }: {
   label: string;
   children: React.ReactNode;
   badge?: number;
+  to?: string;
+  onClick?: () => void;
 }) {
-  return (
-    <button
-      aria-label={label}
-      className="relative inline-flex h-10 w-10 items-center justify-center rounded-full glass hover:bg-[oklch(1_0_0/0.08)] transition-colors"
-    >
+  const cls =
+    "relative inline-flex h-10 w-10 items-center justify-center rounded-full glass hover:bg-[oklch(1_0_0/0.08)] transition-colors";
+  const inner = (
+    <>
       {children}
       {typeof badge === "number" && badge > 0 && (
         <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-aether text-[10px] leading-4 text-background font-semibold text-center">
           {badge}
         </span>
       )}
+    </>
+  );
+  if (to) return <Link to={to} aria-label={label} className={cls}>{inner}</Link>;
+  return (
+    <button aria-label={label} onClick={onClick} className={cls}>
+      {inner}
     </button>
   );
 }
@@ -131,18 +140,13 @@ export function Nav() {
         </nav>
 
         <div className="flex items-center gap-2 shrink-0">
-          <IconBtn label="Search">
-            <button
-              onClick={() => setSearchOpen((v) => !v)}
-              aria-label="Toggle search"
-              className="absolute inset-0 rounded-full"
-            />
+          <IconBtn label="Search" onClick={() => setSearchOpen((v) => !v)}>
             <SearchIcon />
           </IconBtn>
-          <IconBtn label="Wishlist" badge={counts.wishlist}>
+          <IconBtn label="Wishlist" badge={counts.wishlist} to="/wishlist">
             <HeartIcon />
           </IconBtn>
-          <IconBtn label="Cart" badge={counts.cart}>
+          <IconBtn label="Cart" badge={counts.cart} to="/cart">
             <BagIcon />
           </IconBtn>
           {user ? (
@@ -159,6 +163,20 @@ export function Nav() {
                   <div className="px-3 py-2 text-[0.65rem] uppercase tracking-[0.22em] text-platinum/50 truncate">
                     {user.email}
                   </div>
+                  <Link
+                    to="/orders"
+                    onClick={() => setAcctOpen(false)}
+                    className="rounded-xl px-3 py-2 text-[0.7rem] uppercase tracking-[0.2em] text-platinum/80 hover:bg-[oklch(1_0_0/0.06)] hover:text-platinum"
+                  >
+                    Orders
+                  </Link>
+                  <Link
+                    to="/wishlist"
+                    onClick={() => setAcctOpen(false)}
+                    className="rounded-xl px-3 py-2 text-[0.7rem] uppercase tracking-[0.2em] text-platinum/80 hover:bg-[oklch(1_0_0/0.06)] hover:text-platinum"
+                  >
+                    Wishlist
+                  </Link>
                   <button
                     onClick={async () => {
                       await signOut();
