@@ -140,18 +140,13 @@ export function Nav() {
         </nav>
 
         <div className="flex items-center gap-2 shrink-0">
-          <IconBtn label="Search">
-            <button
-              onClick={() => setSearchOpen((v) => !v)}
-              aria-label="Toggle search"
-              className="absolute inset-0 rounded-full"
-            />
+          <IconBtn label="Search" onClick={() => setSearchOpen((v) => !v)}>
             <SearchIcon />
           </IconBtn>
-          <IconBtn label="Wishlist" badge={counts.wishlist}>
+          <IconBtn label="Wishlist" badge={counts.wishlist} to="/wishlist">
             <HeartIcon />
           </IconBtn>
-          <IconBtn label="Cart" badge={counts.cart}>
+          <IconBtn label="Cart" badge={counts.cart} to="/cart">
             <BagIcon />
           </IconBtn>
           {user ? (
