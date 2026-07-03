@@ -36,22 +36,31 @@ function IconBtn({
   label,
   children,
   badge,
+  to,
+  onClick,
 }: {
   label: string;
   children: React.ReactNode;
   badge?: number;
+  to?: string;
+  onClick?: () => void;
 }) {
-  return (
-    <button
-      aria-label={label}
-      className="relative inline-flex h-10 w-10 items-center justify-center rounded-full glass hover:bg-[oklch(1_0_0/0.08)] transition-colors"
-    >
+  const cls =
+    "relative inline-flex h-10 w-10 items-center justify-center rounded-full glass hover:bg-[oklch(1_0_0/0.08)] transition-colors";
+  const inner = (
+    <>
       {children}
       {typeof badge === "number" && badge > 0 && (
         <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-aether text-[10px] leading-4 text-background font-semibold text-center">
           {badge}
         </span>
       )}
+    </>
+  );
+  if (to) return <Link to={to} aria-label={label} className={cls}>{inner}</Link>;
+  return (
+    <button aria-label={label} onClick={onClick} className={cls}>
+      {inner}
     </button>
   );
 }
