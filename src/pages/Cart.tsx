@@ -73,52 +73,18 @@ export default function CartPage() {
   const placeOrder = async () => {
     if (!user || rows.length === 0) return;
     setPlacing(true);
-    const orderNumber = `AE-${Date.now().toString(36).toUpperCase()}`;
-    const { data: order, error: oErr } = await supabase
-      .from("orders")
-      .insert({
-        user_id: user.id,
-        order_number: orderNumber,
-        status: "pending",
-        subtotal,
-        shipping,
-        tax,
-        total,
-        currency,
-      })
-      .select("id")
-      .single();
-    if (oErr || !order) {
-      setPlacing(false);
-      toast.error(oErr?.message ?? "Could not create order");
-      return;
-    }
-    const items = rows
-      .filter((r) => r.product)
-      .map((r) => ({
-        order_id: order.id as string,
-        product_id: r.product!.id,
-        unit_price: Number(r.product!.price),
-        quantity: r.quantity,
-        line_total: Number(r.product!.price) * r.quantity,
-        product_snapshot: {
-          name: r.product!.name,
-          brand: r.product!.brand,
-          image_url: r.product!.image_url,
-          slug: r.product!.slug,
-        },
-      }));
-    const { error: iErr } = await supabase.from("order_items").insert(items);
-    if (iErr) {
-      setPlacing(false);
-      toast.error(iErr.message);
-      return;
-    }
-    await supabase.from("cart_items").delete().eq("user_id", user.id);
-    setPlacing(false);
-    toast.success("Order placed");
-    navigate("/orders");
+    navigate("/checkout", {
+      state: {
+        rows: rows.map((r) => ({
+          id: r.id,
+          quantity: r.quantity,
+          product: r.product,
+        })),
+        totals: { subtotal, shipping, tax, total, currency },
+      },
+    });
   };
+
 
   return (
     <main className="relative bg-background text-foreground min-h-screen">
