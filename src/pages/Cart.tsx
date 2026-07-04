@@ -168,7 +168,7 @@ export default function CartPage() {
                 disabled={placing}
                 className="mt-6 w-full rounded-full bg-platinum text-background py-4 text-[0.72rem] uppercase tracking-[0.28em] font-medium disabled:opacity-60"
               >
-                {placing ? "Placing…" : "Place order"}
+                {placing ? "Redirecting…" : "Continue to checkout"}
               </button>
               <p className="mt-3 text-[0.65rem] uppercase tracking-[0.2em] text-platinum/40 text-center">
                 Demo checkout · no real payment
