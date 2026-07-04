@@ -73,52 +73,18 @@ export default function CartPage() {
   const placeOrder = async () => {
     if (!user || rows.length === 0) return;
     setPlacing(true);
-    const orderNumber = `AE-${Date.now().toString(36).toUpperCase()}`;
-    const { data: order, error: oErr } = await supabase
-      .from("orders")
-      .insert({
-        user_id: user.id,
-        order_number: orderNumber,
-        status: "pending",
-        subtotal,
-        shipping,
-        tax,
-        total,
-        currency,
-      })
-      .select("id")
-      .single();
-    if (oErr || !order) {
-      setPlacing(false);
-      toast.error(oErr?.message ?? "Could not create order");
-      return;
-    }
-    const items = rows
-      .filter((r) => r.product)
-      .map((r) => ({
-        order_id: order.id as string,
-        product_id: r.product!.id,
-        unit_price: Number(r.product!.price),
-        quantity: r.quantity,
-        line_total: Number(r.product!.price) * r.quantity,
-        product_snapshot: {
-          name: r.product!.name,
-          brand: r.product!.brand,
-          image_url: r.product!.image_url,
-          slug: r.product!.slug,
-        },
-      }));
-    const { error: iErr } = await supabase.from("order_items").insert(items);
-    if (iErr) {
-      setPlacing(false);
-      toast.error(iErr.message);
-      return;
-    }
-    await supabase.from("cart_items").delete().eq("user_id", user.id);
-    setPlacing(false);
-    toast.success("Order placed");
-    navigate("/orders");
+    navigate("/checkout", {
+      state: {
+        rows: rows.map((r) => ({
+          id: r.id,
+          quantity: r.quantity,
+          product: r.product,
+        })),
+        totals: { subtotal, shipping, tax, total, currency },
+      },
+    });
   };
+
 
   return (
     <main className="relative bg-background text-foreground min-h-screen">
@@ -202,7 +168,7 @@ export default function CartPage() {
                 disabled={placing}
                 className="mt-6 w-full rounded-full bg-platinum text-background py-4 text-[0.72rem] uppercase tracking-[0.28em] font-medium disabled:opacity-60"
               >
-                {placing ? "Placing…" : "Place order"}
+                {placing ? "Redirecting…" : "Continue to checkout"}
               </button>
               <p className="mt-3 text-[0.65rem] uppercase tracking-[0.2em] text-platinum/40 text-center">
                 Demo checkout · no real payment
