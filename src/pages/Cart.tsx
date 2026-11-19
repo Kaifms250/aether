@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import { Nav } from "@/components/aether/Nav";
 import { Footer } from "@/components/aether/Footer";
+import { Nav } from "@/components/aether/Nav";
+import { ProductArtwork } from "@/components/aether/ProductArtwork";
+import { useAuth } from "@/hooks/useAuth";
+import { formatPrice } from "@/lib/store";
+import { supabase } from "@/integrations/supabase/client";
 
-type Row = {
+type CartRow = {
   id: string;
   quantity: number;
   product: {
@@ -15,164 +17,222 @@ type Row = {
     name: string;
     brand: string | null;
     price: number;
-    currency: string | null;
+    currency: string;
     image_url: string | null;
-    stock: number | null;
+    stock: number;
   } | null;
 };
-
-const fmt = (n: number, c = "USD") =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: c, maximumFractionDigits: 0 }).format(n);
 
 export default function CartPage() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [rows, setRows] = useState<Row[]>([]);
+  const [rows, setRows] = useState<CartRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [placing, setPlacing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
+    setLoadError(null);
     const { data, error } = await supabase
       .from("cart_items")
-      .select("id, quantity, product:products(id, slug, name, brand, price, currency, image_url, stock)")
+      .select(
+        "id, quantity, product:products(id, slug, name, brand, price, currency, image_url, stock)",
+      )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
-    if (error) toast.error(error.message);
-    setRows((data as any) ?? []);
+    if (error) {
+      setLoadError(error.message);
+      setRows([]);
+    } else {
+      setRows(data ?? []);
+    }
     setLoading(false);
   }, [user]);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
-    if (user) load();
+    if (user) void load();
   }, [user, authLoading, load, navigate]);
 
-  const updateQty = async (id: string, qty: number) => {
-    if (qty < 1) return remove(id);
-    setRows((r) => r.map((x) => (x.id === id ? { ...x, quantity: qty } : x)));
-    const { error } = await supabase.from("cart_items").update({ quantity: qty }).eq("id", id);
+  const updateQty = async (row: CartRow, qty: number) => {
+    if (qty < 1) return remove(row.id);
+    if (row.product && qty > row.product.stock) {
+      toast.error("Requested quantity exceeds available stock");
+      return;
+    }
+    const previousRows = rows;
+    setRows((current) =>
+      current.map((item) => (item.id === row.id ? { ...item, quantity: qty } : item)),
+    );
+    const { error } = await supabase.from("cart_items").update({ quantity: qty }).eq("id", row.id);
     if (error) {
+      setRows(previousRows);
       toast.error(error.message);
-      load();
+    } else {
+      window.dispatchEvent(new Event("aether-cart-updated"));
     }
   };
+
   const remove = async (id: string) => {
-    setRows((r) => r.filter((x) => x.id !== id));
+    const previousRows = rows;
+    setRows((current) => current.filter((item) => item.id !== id));
     const { error } = await supabase.from("cart_items").delete().eq("id", id);
-    if (error) toast.error(error.message);
+    if (error) {
+      setRows(previousRows);
+      toast.error(error.message);
+    } else {
+      window.dispatchEvent(new Event("aether-cart-updated"));
+    }
   };
 
-  const subtotal = rows.reduce((s, r) => s + Number(r.product?.price ?? 0) * r.quantity, 0);
-  const shipping = subtotal > 250 || subtotal === 0 ? 0 : 15;
-  const tax = Math.round(subtotal * 0.08);
-  const total = subtotal + shipping + tax;
-  const currency = rows[0]?.product?.currency ?? "USD";
+  const subtotal = useMemo(
+    () => rows.reduce((sum, row) => sum + Number(row.product?.price ?? 0) * row.quantity, 0),
+    [rows],
+  );
+  const shipping = subtotal >= 1999 || subtotal === 0 ? 0 : 99;
+  const tax = Math.round(subtotal * 0.18 * 100) / 100;
+  const currency = rows[0]?.product?.currency ?? "INR";
+  const canCheckout =
+    rows.length > 0 &&
+    rows.every((row) => row.product && row.quantity <= row.product.stock && row.product.stock > 0);
 
-  const placeOrder = async () => {
-    if (!user || rows.length === 0) return;
-    setPlacing(true);
+  const continueToCheckout = () => {
+    if (!user || !canCheckout) return;
     navigate("/checkout", {
       state: {
-        rows: rows.map((r) => ({
-          id: r.id,
-          quantity: r.quantity,
-          product: r.product,
-        })),
-        totals: { subtotal, shipping, tax, total, currency },
+        clear_cart: true,
+        items: rows.flatMap((row) =>
+          row.product ? [{ product_id: row.product.id, quantity: row.quantity }] : [],
+        ),
       },
     });
   };
 
-
   return (
-    <main className="relative bg-background text-foreground min-h-screen">
+    <main className="relative min-h-screen bg-background text-foreground">
       <Nav />
-      <div className="mx-auto max-w-6xl px-6 pt-32 pb-24">
-        <p className="text-[0.7rem] uppercase tracking-[0.32em] text-aether mb-3">Your bag</p>
-        <h1 className="font-display text-5xl md:text-6xl leading-[0.9] mb-10">Checkout</h1>
+      <div className="mx-auto max-w-6xl px-6 pb-24 pt-32">
+        <p className="mb-3 text-[0.7rem] uppercase tracking-[0.32em] text-aether">Your bag</p>
+        <h1 className="mb-10 font-display text-5xl leading-[0.9] md:text-6xl">Shopping bag</h1>
         {loading ? (
-          <p className="text-platinum/60">Loading…</p>
+          <p className="text-platinum/60">Loading your bag…</p>
+        ) : loadError ? (
+          <div role="alert" className="glass rounded-3xl p-8 text-center">
+            <p className="text-rose-200">{loadError}</p>
+            <button type="button" onClick={() => void load()} className="mt-4 text-sm underline">
+              Try again
+            </button>
+          </div>
         ) : rows.length === 0 ? (
-          <div className="text-center py-24 glass rounded-[2rem]">
-            <p className="text-platinum/60 mb-6">Your bag is empty.</p>
+          <div className="glass rounded-[2rem] py-24 text-center">
+            <p className="mb-6 text-platinum/60">Your bag is empty.</p>
             <Link
-              to="/"
-              className="inline-block rounded-full bg-platinum text-background px-8 py-3 text-[0.7rem] uppercase tracking-[0.22em]"
+              to="/shop"
+              className="inline-block rounded-full bg-platinum px-8 py-3 text-[0.7rem] uppercase tracking-[0.22em] text-background"
             >
               Continue shopping
             </Link>
           </div>
         ) : (
-          <div className="grid lg:grid-cols-[1fr_380px] gap-8">
-            <div className="grid gap-3">
-              {rows.map((r) => (
-                <div key={r.id} className="glass rounded-2xl p-4 flex gap-4 items-center">
+          <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
+            <div className="grid content-start gap-3">
+              {rows.map((row) => (
+                <article
+                  key={row.id}
+                  className="flex flex-wrap items-center gap-4 rounded-2xl glass p-4 sm:flex-nowrap"
+                >
                   <Link
-                    to={`/product/${r.product?.slug}`}
-                    className="h-20 w-20 rounded-xl overflow-hidden shrink-0 bg-platinum/5"
+                    to={row.product ? `/product/${row.product.slug}` : "/shop"}
+                    className="h-20 w-20 shrink-0 overflow-hidden rounded-xl"
                   >
-                    {r.product?.image_url && (
-                      <img src={r.product.image_url} alt={r.product.name} className="h-full w-full object-cover" />
-                    )}
+                    <ProductArtwork
+                      src={row.product?.image_url ?? null}
+                      alt={row.product?.name ?? "Unavailable product"}
+                      brand={row.product?.brand}
+                      className="h-full w-full"
+                    />
                   </Link>
                   <div className="min-w-0 flex-1">
                     <div className="text-[0.6rem] uppercase tracking-[0.22em] text-aether">
-                      {r.product?.brand ?? "Aether"}
+                      {row.product?.brand ?? "Unavailable"}
                     </div>
-                    <Link to={`/product/${r.product?.slug}`} className="font-display text-lg block truncate">
-                      {r.product?.name ?? "Product"}
+                    <Link
+                      to={row.product ? `/product/${row.product.slug}` : "/shop"}
+                      className="block truncate font-display text-lg"
+                    >
+                      {row.product?.name ?? "Product no longer available"}
                     </Link>
-                    <div className="text-platinum/60 text-sm">
-                      {fmt(Number(r.product?.price ?? 0), r.product?.currency ?? "USD")}
+                    <div className="text-sm text-platinum/60">
+                      {formatPrice(
+                        Number(row.product?.price ?? 0),
+                        row.product?.currency ?? currency,
+                      )}
                     </div>
+                    {row.product && row.quantity > row.product.stock && (
+                      <p className="mt-1 text-xs text-rose-200">
+                        Only {row.product.stock} currently available
+                      </p>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 glass-strong rounded-full px-2 py-1">
+                  <div className="flex items-center gap-2 rounded-full glass-strong px-2 py-1">
                     <button
-                      onClick={() => updateQty(r.id, r.quantity - 1)}
+                      type="button"
+                      onClick={() => void updateQty(row, row.quantity - 1)}
                       className="h-7 w-7 rounded-full hover:bg-[oklch(1_0_0/0.08)]"
-                      aria-label="Decrease"
+                      aria-label="Decrease quantity"
                     >
                       −
                     </button>
-                    <span className="w-6 text-center text-sm">{r.quantity}</span>
+                    <span className="w-6 text-center text-sm">{row.quantity}</span>
                     <button
-                      onClick={() => updateQty(r.id, r.quantity + 1)}
-                      className="h-7 w-7 rounded-full hover:bg-[oklch(1_0_0/0.08)]"
-                      aria-label="Increase"
+                      type="button"
+                      onClick={() => void updateQty(row, row.quantity + 1)}
+                      disabled={!row.product || row.quantity >= row.product.stock}
+                      className="h-7 w-7 rounded-full hover:bg-[oklch(1_0_0/0.08)] disabled:opacity-40"
+                      aria-label="Increase quantity"
                     >
                       +
                     </button>
                   </div>
                   <button
-                    onClick={() => remove(r.id)}
+                    type="button"
+                    onClick={() => void remove(row.id)}
                     className="text-[0.65rem] uppercase tracking-[0.22em] text-platinum/50 hover:text-platinum"
                   >
                     Remove
                   </button>
-                </div>
+                </article>
               ))}
             </div>
-            <aside className="glass-strong rounded-[2rem] p-6 h-fit lg:sticky lg:top-28">
-              <h2 className="font-display text-2xl mb-6">Summary</h2>
+            <aside className="h-fit rounded-[2rem] glass-strong p-6 lg:sticky lg:top-28">
+              <h2 className="mb-6 font-display text-2xl">Estimate</h2>
               <dl className="grid gap-3 text-sm">
-                <Line label="Subtotal" value={fmt(subtotal, currency)} />
-                <Line label="Shipping" value={shipping === 0 ? "Free" : fmt(shipping, currency)} />
-                <Line label="Tax (est.)" value={fmt(tax, currency)} />
-                <div className="h-px bg-platinum/10 my-1" />
-                <Line label="Total" value={fmt(total, currency)} bold />
+                <Line label="Subtotal" value={formatPrice(subtotal, currency)} />
+                <Line
+                  label="Shipping"
+                  value={shipping === 0 ? "Free" : formatPrice(shipping, currency)}
+                />
+                <Line label="Estimated tax" value={formatPrice(tax, currency)} />
+                <div className="my-1 h-px bg-platinum/10" />
+                <Line
+                  label="Estimated total"
+                  value={formatPrice(subtotal + shipping + tax, currency)}
+                  bold
+                />
               </dl>
-              <button
-                onClick={placeOrder}
-                disabled={placing}
-                className="mt-6 w-full rounded-full bg-platinum text-background py-4 text-[0.72rem] uppercase tracking-[0.28em] font-medium disabled:opacity-60"
-              >
-                {placing ? "Redirecting…" : "Continue to checkout"}
-              </button>
-              <p className="mt-3 text-[0.65rem] uppercase tracking-[0.2em] text-platinum/40 text-center">
-                Demo checkout · no real payment
+              <p className="mt-4 text-center text-[0.65rem] leading-relaxed text-platinum/45">
+                Final prices, tax, shipping and coupon eligibility are recalculated securely at
+                checkout.
               </p>
+              <button
+                type="button"
+                onClick={continueToCheckout}
+                disabled={!canCheckout}
+                className="mt-6 w-full rounded-full bg-platinum py-4 text-[0.72rem] font-medium uppercase tracking-[0.24em] text-background disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Continue to checkout
+              </button>
             </aside>
           </div>
         )}
@@ -186,7 +246,9 @@ function Line({ label, value, bold }: { label: string; value: string; bold?: boo
   return (
     <div className="flex justify-between">
       <dt className="text-platinum/60">{label}</dt>
-      <dd className={bold ? "font-display text-lg text-platinum-gradient" : "text-platinum"}>{value}</dd>
+      <dd className={bold ? "font-display text-lg text-platinum-gradient" : "text-platinum"}>
+        {value}
+      </dd>
     </div>
   );
 }

@@ -14,8 +14,7 @@ const quotes = [
     role: "Industrial Designer",
   },
   {
-    quote:
-      "Service like a private gallery. Returns handled before I'd unpacked the spare unit.",
+    quote: "Service like a private gallery. Returns handled before I'd unpacked the spare unit.",
     name: "Naomi Eze",
     role: "Architect, ECHO Projects",
   },
@@ -23,7 +22,10 @@ const quotes = [
 
 export function Testimonials() {
   return (
-    <section className="relative py-32 overflow-hidden border-y border-white/5">
+    <section
+      id="story"
+      className="relative scroll-mt-24 py-32 overflow-hidden border-y border-white/5"
+    >
       <div className="absolute inset-0 bg-aurora opacity-60" aria-hidden />
       <div className="relative mx-auto max-w-7xl px-6">
         <div className="flex items-end justify-between gap-8 mb-16">
@@ -49,16 +51,10 @@ export function Testimonials() {
               transition={{ duration: 0.7, delay: i * 0.1 }}
               className="glass-strong rounded-3xl p-8 lg:p-10 flex flex-col gap-8 shadow-elevated"
             >
-              <span className="font-display text-6xl text-aether leading-none">
-                "
-              </span>
-              <blockquote className="text-lg leading-relaxed text-platinum">
-                {q.quote}
-              </blockquote>
+              <span className="font-display text-6xl text-aether leading-none">"</span>
+              <blockquote className="text-lg leading-relaxed text-platinum">{q.quote}</blockquote>
               <figcaption className="mt-auto">
-                <div className="font-display tracking-[0.08em] text-xl">
-                  {q.name}
-                </div>
+                <div className="font-display tracking-[0.08em] text-xl">{q.name}</div>
                 <div className="text-xs uppercase tracking-[0.22em] text-muted-foreground mt-1">
                   {q.role}
                 </div>

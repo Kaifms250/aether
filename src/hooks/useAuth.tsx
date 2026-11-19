@@ -1,19 +1,19 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { Session, User } from "@supabase/supabase-js";
+import type { AuthError, Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
 type AuthCtx = {
   session: Session | null;
   user: User | null;
   loading: boolean;
-  signOut: () => Promise<void>;
+  signOut: () => Promise<{ error: AuthError | null }>;
 };
 
 const Ctx = createContext<AuthCtx>({
   session: null,
   user: null,
   loading: true,
-  signOut: async () => {},
+  signOut: async () => ({ error: null }),
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -39,7 +39,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: session?.user ?? null,
         loading,
         signOut: async () => {
-          await supabase.auth.signOut();
+          const { error } = await supabase.auth.signOut();
+          return { error };
         },
       }}
     >

@@ -1,30 +1,21 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import { Nav } from "@/components/aether/Nav";
 import { Footer } from "@/components/aether/Footer";
+import { Nav } from "@/components/aether/Nav";
+import { ProductArtwork } from "@/components/aether/ProductArtwork";
+import { useAuth } from "@/hooks/useAuth";
+import { formatPrice } from "@/lib/store";
+import type { Database, Json } from "@/integrations/supabase/types";
+import { supabase } from "@/integrations/supabase/client";
 
-type Snapshot = { name?: string; brand?: string; image_url?: string; slug?: string };
-type Item = {
-  id: string;
-  quantity: number;
-  unit_price: number;
-  line_total: number;
-  product_snapshot: Snapshot | null;
-};
-type Order = {
-  id: string;
-  order_number: string;
-  status: string;
-  total: number;
-  currency: string;
-  created_at: string;
-  order_items: Item[];
-};
-
-const fmt = (n: number, c = "USD") =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: c, maximumFractionDigits: 0 }).format(n);
+type Item = Pick<
+  Database["public"]["Tables"]["order_items"]["Row"],
+  "id" | "quantity" | "unit_price" | "line_total" | "product_snapshot"
+>;
+type Order = Pick<
+  Database["public"]["Tables"]["orders"]["Row"],
+  "id" | "order_number" | "status" | "total" | "currency" | "created_at"
+> & { order_items: Item[] };
 
 const statusStyle: Record<string, string> = {
   pending: "bg-amber-500/15 text-amber-200",
@@ -41,84 +32,100 @@ export default function OrdersPage() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    setLoadError(null);
+    const { data, error } = await supabase
+      .from("orders")
+      .select(
+        "id, order_number, status, total, currency, created_at, order_items(id, quantity, unit_price, line_total, product_snapshot)",
+      )
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+    if (error) {
+      setLoadError(error.message);
+      setOrders([]);
+    } else {
+      setOrders(data ?? []);
+    }
+    setLoading(false);
+  }, [user]);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
-    if (!user) return;
-    (async () => {
-      setLoading(true);
-      const { data } = await supabase
-        .from("orders")
-        .select("id, order_number, status, total, currency, created_at, order_items(id, quantity, unit_price, line_total, product_snapshot)")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-      setOrders((data as any) ?? []);
-      setLoading(false);
-    })();
-  }, [user, authLoading, navigate]);
+    if (user) void load();
+  }, [user, authLoading, load, navigate]);
 
   return (
-    <main className="relative bg-background text-foreground min-h-screen">
+    <main className="relative min-h-screen bg-background text-foreground">
       <Nav />
-      <div className="mx-auto max-w-5xl px-6 pt-32 pb-24">
-        <p className="text-[0.7rem] uppercase tracking-[0.32em] text-aether mb-3">Archive</p>
-        <h1 className="font-display text-5xl md:text-6xl leading-[0.9] mb-10">Your orders</h1>
+      <div className="mx-auto max-w-5xl px-6 pb-24 pt-32">
+        <p className="mb-3 text-[0.7rem] uppercase tracking-[0.32em] text-aether">Archive</p>
+        <h1 className="mb-10 font-display text-5xl leading-[0.9] md:text-6xl">Your orders</h1>
         {loading ? (
-          <p className="text-platinum/60">Loading…</p>
+          <p className="text-platinum/60">Loading your orders…</p>
+        ) : loadError ? (
+          <div role="alert" className="glass rounded-3xl p-8 text-center">
+            <p className="text-rose-200">{loadError}</p>
+            <button type="button" onClick={() => void load()} className="mt-4 text-sm underline">
+              Try again
+            </button>
+          </div>
         ) : orders.length === 0 ? (
-          <div className="text-center py-24 glass rounded-[2rem]">
-            <p className="text-platinum/60 mb-6">No orders yet.</p>
+          <div className="glass rounded-[2rem] py-24 text-center">
+            <p className="mb-6 text-platinum/60">No orders yet.</p>
             <Link
-              to="/"
-              className="inline-block rounded-full bg-platinum text-background px-8 py-3 text-[0.7rem] uppercase tracking-[0.22em]"
+              to="/shop"
+              className="inline-block rounded-full bg-platinum px-8 py-3 text-[0.7rem] uppercase tracking-[0.22em] text-background"
             >
               Start shopping
             </Link>
           </div>
         ) : (
           <div className="grid gap-4">
-            {orders.map((o) => (
-              <article key={o.id} className="glass rounded-[1.5rem] p-6">
-                <header className="flex flex-wrap items-center justify-between gap-3 mb-5">
+            {orders.map((order) => (
+              <article key={order.id} className="rounded-[1.5rem] glass p-6">
+                <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="text-[0.6rem] uppercase tracking-[0.22em] text-platinum/50">
-                      Order · {new Date(o.created_at).toLocaleDateString()}
+                      Order · {new Date(order.created_at).toLocaleDateString()}
                     </div>
-                    <div className="font-display text-2xl mt-0.5">{o.order_number}</div>
+                    <div className="mt-0.5 font-display text-2xl">{order.order_number}</div>
                   </div>
                   <div className="flex items-center gap-3">
                     <span
-                      className={`px-3 py-1 rounded-full text-[0.6rem] uppercase tracking-[0.22em] ${statusStyle[o.status] ?? "bg-platinum/10 text-platinum/70"}`}
+                      className={`rounded-full px-3 py-1 text-[0.6rem] uppercase tracking-[0.22em] ${statusStyle[order.status] ?? "bg-platinum/10 text-platinum/70"}`}
                     >
-                      {o.status}
+                      {order.status}
                     </span>
                     <span className="font-display text-xl text-platinum-gradient">
-                      {fmt(Number(o.total), o.currency)}
+                      {formatPrice(Number(order.total), order.currency)}
                     </span>
                   </div>
                 </header>
                 <div className="grid gap-2">
-                  {o.order_items?.map((it) => (
-                    <div key={it.id} className="flex items-center gap-3 text-sm">
-                      <div className="h-12 w-12 rounded-lg overflow-hidden bg-platinum/5 shrink-0">
-                        {it.product_snapshot?.image_url && (
-                          <img
-                            src={it.product_snapshot.image_url}
-                            alt={it.product_snapshot.name ?? ""}
-                            className="h-full w-full object-cover"
-                          />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
+                  {order.order_items.map((item) => (
+                    <div key={item.id} className="flex items-center gap-3 text-sm">
+                      <ProductArtwork
+                        src={snapshotField(item.product_snapshot, "image_url")}
+                        alt={snapshotField(item.product_snapshot, "name") ?? "Ordered product"}
+                        brand={snapshotField(item.product_snapshot, "brand")}
+                        className="h-12 w-12 shrink-0 rounded-lg"
+                      />
+                      <div className="min-w-0 flex-1">
                         <div className="text-[0.6rem] uppercase tracking-[0.22em] text-aether">
-                          {it.product_snapshot?.brand ?? "Aether"}
+                          {snapshotField(item.product_snapshot, "brand") ?? "Aether"}
                         </div>
                         <div className="truncate text-platinum">
-                          {it.product_snapshot?.name ?? "Product"} × {it.quantity}
+                          {snapshotField(item.product_snapshot, "name") ?? "Product"} ×{" "}
+                          {item.quantity}
                         </div>
                       </div>
                       <div className="text-platinum/70">
-                        {fmt(Number(it.line_total), o.currency)}
+                        {formatPrice(Number(item.line_total), order.currency)}
                       </div>
                     </div>
                   ))}
@@ -131,4 +138,10 @@ export default function OrdersPage() {
       <Footer />
     </main>
   );
+}
+
+function snapshotField(snapshot: Json, field: string): string | null {
+  if (!snapshot || Array.isArray(snapshot) || typeof snapshot !== "object") return null;
+  const value = snapshot[field];
+  return typeof value === "string" ? value : null;
 }

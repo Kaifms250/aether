@@ -1,27 +1,17 @@
-/**
- * Official brand logos via logo.dev public CDN.
- * Uses a publishable demo token; safe to ship client-side.
- */
-const LOGO_TOKEN = "pk_X-1zO13GSgeOoUrIuJ6GMQ";
-
 const brands = [
-  { name: "Apple", domain: "apple.com" },
-  { name: "Nike", domain: "nike.com" },
-  { name: "Adidas", domain: "adidas.com" },
-  { name: "Samsung", domain: "samsung.com" },
-  { name: "Sony", domain: "sony.com" },
-  { name: "Puma", domain: "puma.com" },
-  { name: "JBL", domain: "jbl.com" },
-  { name: "Logitech", domain: "logitech.com" },
-  { name: "HP", domain: "hp.com" },
-  { name: "Dell", domain: "dell.com" },
-  { name: "Bose", domain: "bose.com" },
-  { name: "Canon", domain: "canon.com" },
+  { name: "Apple", src: "https://cdn.simpleicons.org/apple/E8E6E3" },
+  { name: "Nike", src: "https://cdn.simpleicons.org/nike/E8E6E3" },
+  { name: "Adidas", src: "https://cdn.simpleicons.org/adidas/E8E6E3" },
+  { name: "Samsung", src: "https://cdn.simpleicons.org/samsung/E8E6E3" },
+  { name: "Sony", src: "https://cdn.simpleicons.org/sony/E8E6E3" },
+  { name: "Puma", src: "https://cdn.simpleicons.org/puma/E8E6E3" },
+  { name: "JBL", src: "https://cdn.simpleicons.org/jbl/E8E6E3" },
+  { name: "Logitech", src: "https://www.google.com/s2/favicons?domain=logitech.com&sz=128" },
+  { name: "HP", src: "https://cdn.simpleicons.org/hp/E8E6E3" },
+  { name: "Dell", src: "https://cdn.simpleicons.org/dell/E8E6E3" },
+  { name: "Bose", src: "https://cdn.simpleicons.org/bose/E8E6E3" },
+  { name: "Canon", src: "https://www.google.com/s2/favicons?domain=canon.com&sz=128" },
 ];
-
-function logoUrl(domain: string) {
-  return `https://img.logo.dev/${domain}?token=${LOGO_TOKEN}&format=png&size=120&retina=true`;
-}
 
 export function BrandMarquee() {
   // duplicate list for seamless loop
@@ -59,35 +49,24 @@ export function BrandMarquee() {
               title={b.name}
             >
               <img
-                src={logoUrl(b.domain)}
+                src={b.src}
                 alt={`${b.name} logo`}
                 loading="lazy"
                 decoding="async"
                 width={120}
                 height={48}
                 className="max-h-12 max-w-[120px] object-contain"
-                style={{ filter: "brightness(0) invert(0.95)" }}
                 onError={(e) => {
                   const img = e.currentTarget as HTMLImageElement;
-                  // 1st failure: drop the mono filter and retry with brand colors
-                  if (!img.dataset.fallback) {
-                    img.dataset.fallback = "color";
-                    img.style.filter = "none";
-                    return;
-                  }
-                  // 2nd failure: swap to a text wordmark so the slot never goes blank
-                  if (img.dataset.fallback !== "text") {
-                    img.dataset.fallback = "text";
-                    const parent = img.parentElement;
-                    if (parent) {
-                      img.remove();
-                      const span = document.createElement("span");
-                      span.textContent = b.name;
-                      span.className =
-                        "font-display text-xl tracking-wide text-platinum/80";
-                      parent.appendChild(span);
-                    }
-                  }
+                  if (img.dataset.fallback === "text") return;
+                  img.dataset.fallback = "text";
+                  const parent = img.parentElement;
+                  if (!parent) return;
+                  img.remove();
+                  const span = document.createElement("span");
+                  span.textContent = b.name;
+                  span.className = "font-display text-xl tracking-wide text-platinum/80";
+                  parent.appendChild(span);
                 }}
               />
             </div>

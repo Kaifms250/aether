@@ -1,22 +1,45 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { AetherLogo } from "@/components/aether/Logo";
+import { parseCheckoutState } from "@/lib/store";
 
 export default function AuthPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { session } = useAuth();
   const [mode, setMode] = useState<"sign_in" | "sign_up">("sign_in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
+  const finishSignIn = useCallback(() => {
+    const state = location.state as unknown;
+    if (state && typeof state === "object") {
+      const returnState = state as Record<string, unknown>;
+      if (returnState.redirectTo === "/checkout") {
+        const checkoutState = parseCheckoutState(returnState.checkoutState);
+        if (checkoutState) {
+          navigate("/checkout", { replace: true, state: checkoutState });
+          return;
+        }
+      }
+      if (
+        typeof returnState.redirectTo === "string" &&
+        (returnState.redirectTo === "/shop" || returnState.redirectTo.startsWith("/product/"))
+      ) {
+        navigate(returnState.redirectTo, { replace: true });
+        return;
+      }
+    }
+    navigate("/", { replace: true });
+  }, [location.state, navigate]);
 
   useEffect(() => {
-    if (session) navigate("/", { replace: true });
-  }, [session, navigate]);
+    if (session) finishSignIn();
+  }, [session, finishSignIn]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,10 +60,10 @@ export default function AuthPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Welcome back.");
-        navigate("/", { replace: true });
+        finishSignIn();
       }
-    } catch (err: any) {
-      toast.error(err?.message ?? "Something went wrong");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setBusy(false);
     }

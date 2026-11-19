@@ -7,14 +7,13 @@ import "./styles.css";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/Auth";
+import ShopPage from "./pages/Shop";
 import ProductPage from "./pages/Product";
 import CartPage from "./pages/Cart";
 import WishlistPage from "./pages/Wishlist";
 import OrdersPage from "./pages/Orders";
 import CheckoutPage from "./pages/Checkout";
 import PaymentPage from "./pages/Payment";
-import PaymentSuccessPage from "./pages/PaymentSuccess";
-import PaymentFailurePage from "./pages/PaymentFailure";
 
 import { AuthProvider } from "./hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
@@ -29,6 +28,7 @@ createRoot(document.getElementById("root")!).render(
           <Toaster theme="dark" position="top-center" />
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/shop" element={<ShopPage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/product/:slug" element={<ProductPage />} />
             <Route path="/cart" element={<CartPage />} />
@@ -36,8 +36,6 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/payment" element={<PaymentPage />} />
-            <Route path="/payment/success" element={<PaymentSuccessPage />} />
-            <Route path="/payment/failure" element={<PaymentFailurePage />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
